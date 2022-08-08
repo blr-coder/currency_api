@@ -1,0 +1,18 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: postgres:13.1
+    restart: always
+    environment:
+      POSTGRES_DB: currency_api_db
+      POSTGRES_USER: currency_api_db_user
+      POSTGRES_PASSWORD: currency_api_db_user_pass
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - 5438:5432
+    volumes:
+      - currency-pg-data:/var/lib/postgresql/data/
+
+volumes:
+  currency-pg-data:
