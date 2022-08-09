@@ -45,10 +45,6 @@ func (h *CurrencyHandler) List(c *fiber.Ctx) error {
 		return err
 	}
 
-	if pairs != nil {
-		fmt.Println("PAIRS", pairs)
-	}
-
 	return c.JSON(pairs)
 }
 

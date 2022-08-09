@@ -27,7 +27,7 @@ func (r *CurrencyPairRepository) Create(ctx context.Context, input *models.Curre
 	query := `
 		INSERT INTO "currency_pair" (currency_from, currency_to, well) 
 		VALUES ($1, $2, $3)
-		RETURNING *
+		RETURNING currency_from, currency_to, well, updated_at
 	`
 
 	rows, err := r.db.QueryxContext(ctx, query, input.CurrencyFrom, input.CurrencyTo, defaultWell)
@@ -67,20 +67,14 @@ func (r *CurrencyPairRepository) Get(ctx context.Context, f, t string) (*models.
 	return &pair, nil
 }
 
-func (r *CurrencyPairRepository) Update(ctx context.Context, pair *models.CurrencyPair) (*models.CurrencyPair, error) {
-
-	return nil, nil
-}
-
-func (r *CurrencyPairRepository) List(ctx context.Context) ([]*models.CurrencyPair, error) {
+func (r *CurrencyPairRepository) List(ctx context.Context) (models.CurrencyPairs, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, postgres.Timeout)
 	defer cancel()
 
-	// TODO: Delete "*"
-	query := `SELECT * FROM currency_pair`
+	query := `SELECT currency_from, currency_to, well, updated_at FROM currency_pair`
 
-	var pairs []*models.CurrencyPair
+	var pairs models.CurrencyPairs
 	err := r.db.SelectContext(ctx, &pairs, query)
 	if err != nil {
 		// TODO: Add errors handling
@@ -89,4 +83,11 @@ func (r *CurrencyPairRepository) List(ctx context.Context) ([]*models.CurrencyPa
 	}
 
 	return pairs, nil
+}
+
+func (r *CurrencyPairRepository) UpdateCurrencyWell(ctx context.Context, exchangeInfo *models.CurrencyExchangeInfo) error {
+
+	r.logger.Info("UPDATING PROCESS ...")
+
+	return nil
 }

@@ -13,6 +13,26 @@ type CurrencyPair struct {
 	UpdatedAt    *time.Time `json:"updated_at" db:"updated_at"`
 }
 
+type CurrencyPairs []*CurrencyPair
+
+func (pairs CurrencyPairs) MapByCurrency() CurrencyExchangeMap {
+	currencyMap := CurrencyExchangeMap{}
+	for _, pair := range pairs {
+		currencyTo, ok := currencyMap[pair.CurrencyFrom]
+		if !ok {
+			var to []string
+			currencyMap[pair.CurrencyFrom] = append(to, pair.CurrencyTo)
+			continue
+		}
+
+		currencyMap[pair.CurrencyFrom] = append(currencyTo, pair.CurrencyTo)
+	}
+
+	return currencyMap
+}
+
+type CurrencyExchangeMap map[string][]string
+
 type CurrencyPairCreateInput struct {
 	CurrencyFrom string `json:"currencyFrom"`
 	CurrencyTo   string `json:"currencyTo"`
@@ -49,4 +69,9 @@ type CurrencyPairExchangeInput struct {
 	CurrencyFrom string  `json:"currencyFrom"`
 	CurrencyTo   string  `json:"currencyTo"`
 	Value        float64 `json:"value"`
+}
+
+type CurrencyExchangeInfo struct { //need better name:)
+	Base          string             `json:"base"`
+	ExchangeRates map[string]float64 `json:"exchange_rates"`
 }

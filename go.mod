@@ -3,6 +3,7 @@ module currency_api
 go 1.18
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gofiber/fiber/v2 v2.36.0
 	github.com/ilyakaznacheev/cleanenv v1.3.0
