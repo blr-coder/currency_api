@@ -21,8 +21,13 @@ import (
 )
 
 func main() {
+	// FIXME: Структура микросервиса (расположение папок и файлов)
 
-	appConfig := config.NewConfig()
+	// FIXME: Как лучше передавать путь к файлу конфига? Подозреваю что через флаг? (юзать кобру или cli.App, или встроенный пакет flag)
+	appConfig, err := config.NewConfig("config/config.yaml")
+	if err != nil {
+		panic(fmt.Errorf("failed to init config: %v", err.Error()))
+	}
 
 	psqlDB, err := postgres.NewDB(
 		appConfig.Postgres.Host,
@@ -32,6 +37,7 @@ func main() {
 		appConfig.Postgres.Password,
 	)
 	if err != nil {
+		// FIXME: Нужны ли отдельные ошибки на всё? Типа domain_errors со своими типами?
 		panic(fmt.Errorf("failed to init postgres: %v", err.Error()))
 	}
 
@@ -64,7 +70,7 @@ func NewCheckManager(currencyRepo repository_interfaces.CurrencyPairRepositoryI)
 
 func (m *CheckManager) checkRates() {
 
-	// ???
+	// FIXME: Как тут лучше поступить с контекстом?
 	ctx := context.TODO()
 
 	listCurrencyPairs, err := m.currencyRepo.List(ctx)
@@ -74,8 +80,6 @@ func (m *CheckManager) checkRates() {
 
 	currencyMap := listCurrencyPairs.MapByCurrency()
 
-	fmt.Println("cMap:", currencyMap)
-
 	//makeRequest("USD", []string{"EUR", "RUB"})
 	for tick := range time.Tick(20 * time.Second) {
 		fmt.Println("Tick", tick.UTC().Format(time.RFC3339))
@@ -83,7 +87,6 @@ func (m *CheckManager) checkRates() {
 		// TODO: "Free plan is limited to 1 request per second."
 		var secondsForSleep int64
 
-		//wg := &sync.WaitGroup{}
 		for f, t := range currencyMap {
 
 			// Костыльная задержка для отправки запросов т.к. API банит больше 1 запроса в секунду
@@ -135,5 +138,6 @@ func (m *CheckManager) makeRequest(currencyFrom string, currenciesTo []string, s
 	if err != nil {
 		log.Fatalln(err)
 	}
+	// FIXME: Верно ли тут используется WaitGroup?
 	m.Done()
 }

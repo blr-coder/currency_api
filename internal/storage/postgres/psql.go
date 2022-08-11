@@ -34,10 +34,10 @@ func NewDB(dbHost, dbPort, dbName, dbUser, dbUserPassword string) (*sqlx.DB, err
 		return nil, err
 	}
 
+	// FIXME: Какие ещё значения нужно указать, и на что ориентироваться указывая цифры?
 	db.SetMaxIdleConns(60)
 	db.SetMaxOpenConns(60)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	newSQLX := sqlx.NewDb(db, "postgres")
-	return newSQLX, nil
+	return sqlx.NewDb(db, "postgres"), nil
 }

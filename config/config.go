@@ -1,29 +1,34 @@
 package config
 
 import (
-	"fmt"
-	"github.com/ilyakaznacheev/cleanenv"
+	"gopkg.in/yaml.v3"
+	"io/ioutil"
 )
 
 type Config struct {
-	Port     string `env:"APP_PORT" env-default:"4444"`
-	Postgres postgres
+	Port     string   `yaml:"port"`
+	Postgres postgres `yaml:"postgres"`
 }
 
 type postgres struct {
-	Host     string `env:"DB_HOST" env-default:"127.0.0.1"`
-	Port     string `env:"DB_PORT" env-default:"5438"`
-	Name     string `env:"DB_NAME" env-default:"currency_api_db"`
-	User     string `env:"DB_USER" env-default:"currency_api_db_user"`
-	Password string `env:"DB_PASS" env-default:"currency_api_db_user_pass"`
+	Host     string `yaml:"host"`
+	Port     string `yaml:"port"`
+	Name     string `yaml:"name"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
 }
 
-func NewConfig() *Config {
-	cfg := new(Config)
-	err := cleanenv.ReadEnv(cfg)
+func NewConfig(configPath string) (*Config, error) {
+	configFile, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to init config: %v", err.Error()))
+		return nil, err
 	}
-	return cfg
+
+	var config Config
+	if err = yaml.Unmarshal(configFile, &config); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 
 }

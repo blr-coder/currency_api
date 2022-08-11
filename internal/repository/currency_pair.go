@@ -87,6 +87,9 @@ func (r *CurrencyPairRepository) List(ctx context.Context) (models.CurrencyPairs
 
 func (r *CurrencyPairRepository) UpdateCurrencyWell(ctx context.Context, exchangeInfo *models.CurrencyExchangeInfo) error {
 
+	// FIXME: Организовать обновление в одной транзакции?
+	// Или вообще обновление всей таблицы в одной транзакции? Тогда заблочим таблицу?
+
 	r.logger.Info("UPDATING PROCESS ...")
 
 	return nil
