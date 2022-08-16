@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
-	"currency_api/config"
-	"currency_api/internal/models"
-	"currency_api/internal/repository"
-	"currency_api/internal/repository/repository_interfaces"
-	"currency_api/internal/storage/postgres"
-	"currency_api/internal/transport/rest"
+	"currency_api/internal/app/config"
+	"currency_api/internal/app/currency/models"
+	"currency_api/internal/app/currency/repository"
+	"currency_api/internal/app/currency/service"
+	"currency_api/internal/app/currency/transport/rest"
 	"encoding/json"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/sirupsen/logrus"
+	"github.com/gofiber/fiber/v2"
+	"github.com/jmoiron/sqlx"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -20,52 +20,54 @@ import (
 	"time"
 )
 
-func main() {
-	// FIXME: Структура микросервиса (расположение папок и файлов)
+const (
+	dbTimeout = 3 * time.Second
+)
 
-	// FIXME: Как лучше передавать путь к файлу конфига? Подозреваю что через флаг? (юзать кобру или cli.App, или встроенный пакет flag)
-	appConfig, err := config.NewConfig("config/config.yaml")
+func runApp() error {
+
+	appConfig, err := config.NewConfig("configs/dev_config.yaml")
 	if err != nil {
-		panic(fmt.Errorf("failed to init config: %v", err.Error()))
+		return err
 	}
 
-	psqlDB, err := postgres.NewDB(
-		appConfig.Postgres.Host,
-		appConfig.Postgres.Port,
-		appConfig.Postgres.Name,
-		appConfig.Postgres.User,
-		appConfig.Postgres.Password,
-	)
+	db, err := sqlx.Open("postgres", appConfig.PostgresConnLink)
 	if err != nil {
-		// FIXME: Нужны ли отдельные ошибки на всё? Типа domain_errors со своими типами?
-		panic(fmt.Errorf("failed to init postgres: %v", err.Error()))
+		return err
 	}
 
-	logger := logrus.StandardLogger()
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+	if err = db.PingContext(ctx); err != nil {
+		return err
+	}
 
-	r := repository.NewCurrencyPairRepository(psqlDB, logger)
+	r := repository.New(db)
 
-	checkManager := NewCheckManager(r)
+	c := http.Client{}
 
+	checkManager := NewCheckManager(r, &c)
 	go checkManager.checkRates()
 
-	h := rest.NewCurrencyHandler(r)
+	s := service.New(r)
 
-	app := rest.NewCurrencyApp(h)
+	api := fiber.New()
 
-	err = app.Run(appConfig.Port)
-	if err != nil {
-		panic(fmt.Errorf("failed to run app: %v", err.Error()))
-	}
+	//FIXME: Что то я походу не так понял) Не понятно что за rest к кому он относится. У Auth тоже ведьможет быть свой rest?
+	// Я бы в таком случае назвал типа "InitCurrencyRoutes" / "InitCurrencyHandler" соответственно для Auth был бы "InitAuthHandler"
+	rest.New(s, api)
+
+	return api.Listen(fmt.Sprintf(":%s", appConfig.Port))
 }
 
 type CheckManager struct { // Вероятно тоже должен быть свой интерфейс
 	sync.WaitGroup
-	currencyRepo repository_interfaces.CurrencyPairRepositoryI
+	repository *repository.Repository
+	httpClient *http.Client
 }
 
-func NewCheckManager(currencyRepo repository_interfaces.CurrencyPairRepositoryI) *CheckManager {
-	return &CheckManager{currencyRepo: currencyRepo}
+func NewCheckManager(repository *repository.Repository, httpClient *http.Client) *CheckManager {
+	return &CheckManager{repository: repository, httpClient: httpClient}
 }
 
 func (m *CheckManager) checkRates() {
@@ -73,7 +75,7 @@ func (m *CheckManager) checkRates() {
 	// FIXME: Как тут лучше поступить с контекстом?
 	ctx := context.TODO()
 
-	listCurrencyPairs, err := m.currencyRepo.List(ctx)
+	listCurrencyPairs, err := m.repository.Pair.List(ctx)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -81,7 +83,7 @@ func (m *CheckManager) checkRates() {
 	currencyMap := listCurrencyPairs.MapByCurrency()
 
 	//makeRequest("USD", []string{"EUR", "RUB"})
-	for tick := range time.Tick(20 * time.Second) {
+	for tick := range time.Tick(5 * time.Second) {
 		fmt.Println("Tick", tick.UTC().Format(time.RFC3339))
 
 		// TODO: "Free plan is limited to 1 request per second."
@@ -112,10 +114,22 @@ func (m *CheckManager) makeRequest(currencyFrom string, currenciesTo []string, s
 		strings.Join(currenciesTo, ","),
 	)
 	//resp, err := http.Get("https://exchange-rates.abstractapi.com/v1/live/?api_key=f0685cd6c6744cc686d60fa9dc6477c0&base=USD&target=EUR,RUB")
-	resp, err := http.Get(url)
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -134,7 +148,7 @@ func (m *CheckManager) makeRequest(currencyFrom string, currenciesTo []string, s
 	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
 	// makeRequest выполняется в отдельной горутине в цикле... запросы в базу в цикле это фигово наверное...
-	err = m.currencyRepo.UpdateCurrencyWell(context.TODO(), aResp)
+	err = m.repository.Pair.UpdateCurrencyWell(context.TODO(), aResp)
 	if err != nil {
 		log.Fatalln(err)
 	}

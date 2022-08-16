@@ -6,8 +6,9 @@ import (
 )
 
 type Config struct {
-	Port     string   `yaml:"port"`
-	Postgres postgres `yaml:"postgres"`
+	Port             string   `yaml:"port"`
+	Postgres         postgres `yaml:"postgres"`
+	PostgresConnLink string   `yaml:"postgres_conn_link"`
 }
 
 type postgres struct {
