@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	// DB driver
 	"github.com/jmoiron/sqlx"
@@ -70,8 +72,39 @@ func (r *Repository) List(ctx context.Context) (models.CurrencyPairs, error) {
 
 func (r *Repository) UpdateCurrencyWell(ctx context.Context, exchangeInfo *models.CurrencyExchangeInfo) error {
 
-	// FIXME: Организовать обновление в одной транзакции?
-	// Или вообще обновление всей таблицы в одной транзакции? Тогда заблочим таблицу?
+	fmt.Println("UpdateCurrencyWell FOR:", exchangeInfo)
+
+	for currency, rate := range exchangeInfo.ExchangeRates {
+		now := time.Now().UTC()
+		err := r.updatePair(ctx, &models.CurrencyPair{
+			CurrencyFrom: exchangeInfo.Base,
+			CurrencyTo:   currency,
+			Well:         rate,
+			UpdatedAt:    &now,
+		})
+		// TODO: Возможно лучше возврат массива ошибок что бы понимать на какой именно валюте что то не так?
+		if err != nil {
+			return err
+		}
+
+		// На всякий случай
+		time.Sleep(1 * time.Second)
+	}
+
+	return nil
+}
+
+func (r *Repository) updatePair(ctx context.Context, pair *models.CurrencyPair) error {
+
+	fmt.Println("updatePair for:", pair)
+
+	query := `UPDATE currency_pair SET well=$3, updated_at=$4 WHERE currency_from=$1 AND currency_to=$2`
+
+	rows, err := r.db.QueryxContext(ctx, query, pair.CurrencyFrom, pair.CurrencyTo, pair.Well, pair.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
 
 	return nil
 }

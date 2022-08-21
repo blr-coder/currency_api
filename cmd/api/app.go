@@ -83,8 +83,24 @@ func (m *CheckManager) checkRates() {
 	currencyMap := listCurrencyPairs.MapByCurrency()
 
 	//makeRequest("USD", []string{"EUR", "RUB"})
-	for tick := range time.Tick(5 * time.Second) {
+	for tick := range time.Tick(10 * time.Second) {
 		fmt.Println("Tick", tick.UTC().Format(time.RFC3339))
+
+		/*testM := map[string]float64{
+			"EUR": 0.009473,
+			"RUB": 0.009524,
+			"PLN": 0.045005,
+		}
+
+		testUPD := &models.CurrencyExchangeInfo{
+			Base:          "USD",
+			ExchangeRates: testM,
+		}
+
+		err := m.repository.Pair.UpdateCurrencyWell(ctx, testUPD)
+		if err != nil {
+			log.Fatalln(err)
+		}*/
 
 		// TODO: "Free plan is limited to 1 request per second."
 		var secondsForSleep int64
