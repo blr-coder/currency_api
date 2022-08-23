@@ -3,20 +3,12 @@ package main
 import (
 	"context"
 	"currency_api/internal/app/config"
-	"currency_api/internal/app/currency/models"
 	"currency_api/internal/app/currency/repository"
 	"currency_api/internal/app/currency/service"
 	"currency_api/internal/app/currency/transport/rest"
-	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"strings"
-	"sync"
 	"time"
 )
 
@@ -44,80 +36,105 @@ func runApp() error {
 
 	r := repository.New(db)
 
-	c := http.Client{}
-
+	/*c := http.Client{}
 	checkManager := NewCheckManager(r, &c)
-	go checkManager.checkRates()
+	go checkManager.checkRates()*/
 
 	s := service.New(r)
 
 	api := fiber.New()
 
-	//FIXME: Что то я походу не так понял) Не понятно что за rest к кому он относится. У Auth тоже ведьможет быть свой rest?
-	// Я бы в таком случае назвал типа "InitCurrencyRoutes" / "InitCurrencyHandler" соответственно для Auth был бы "InitAuthHandler"
-	rest.New(s, api)
+	h := rest.New(s, api)
+	h.InitCurrencyRoutes()
+
+	// TODO: Move to func
+	/*exchangeClient := exchange_rates.New(appConfig.AbstractApiKey)
+	listCurrencyPairs, err := r.Pair.List(ctx)
+	if err != nil {
+		if err != nil {
+			return err
+		}
+	}
+	currencyMap := listCurrencyPairs.MapByCurrency()
+
+	for f, t := range currencyMap {
+		rates, err := exchangeClient.GetRates(ctx, f, t)
+		if err != nil {
+			return err
+		}
+
+		err = r.Pair.UpdateCurrencyWell(ctx, rates)
+		if err != nil {
+			return err
+		}
+
+		time.Sleep(2 * time.Second)
+	}*/
+	// TODO: Move to func
 
 	return api.Listen(fmt.Sprintf(":%s", appConfig.Port))
 }
 
-type CheckManager struct { // Вероятно тоже должен быть свой интерфейс
-	sync.WaitGroup
-	repository *repository.Repository
-	httpClient *http.Client
-}
+// FIXME: Drop after testing
 
-func NewCheckManager(repository *repository.Repository, httpClient *http.Client) *CheckManager {
-	return &CheckManager{repository: repository, httpClient: httpClient}
-}
+//type CheckManager struct { // Вероятно тоже должен быть свой интерфейс
+//	sync.WaitGroup
+//	repository *repository.Repository
+//	httpClient *http.Client
+//}
+//
+//func NewCheckManager(repository *repository.Repository, httpClient *http.Client) *CheckManager {
+//	return &CheckManager{repository: repository, httpClient: httpClient}
+//}
+//
+//func (m *CheckManager) checkRates() {
+//
+//	// FIXME: Как тут лучше поступить с контекстом?
+//	ctx := context.TODO()
+//
+//	listCurrencyPairs, err := m.repository.Pair.List(ctx)
+//	if err != nil {
+//		log.Fatalln(err)
+//	}
+//
+//	currencyMap := listCurrencyPairs.MapByCurrency()
+//
+//	//makeRequest("USD", []string{"EUR", "RUB"})
+//	for tick := range time.Tick(10 * time.Second) {
+//		fmt.Println("Tick", tick.UTC().Format(time.RFC3339))
+//
+//		/*testM := map[string]float64{
+//			"EUR": 0.009473,
+//			"RUB": 0.009524,
+//			"PLN": 0.045005,
+//		}
+//
+//		testUPD := &models.CurrencyExchangeInfo{
+//			Base:          "USD",
+//			ExchangeRates: testM,
+//		}
+//
+//		err := m.repository.Pair.UpdateCurrencyWell(ctx, testUPD)
+//		if err != nil {
+//			log.Fatalln(err)
+//		}*/
+//
+//		// TODO: "Free plan is limited to 1 request per second."
+//		var secondsForSleep int64
+//
+//		for f, t := range currencyMap {
+//
+//			// Костыльная задержка для отправки запросов т.к. API банит больше 1 запроса в секунду
+//			secondsForSleep++
+//
+//			m.Add(1)
+//			go m.makeRequest(f, t, time.Duration(secondsForSleep))
+//			m.Wait()
+//		}
+//	}
+//}
 
-func (m *CheckManager) checkRates() {
-
-	// FIXME: Как тут лучше поступить с контекстом?
-	ctx := context.TODO()
-
-	listCurrencyPairs, err := m.repository.Pair.List(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	currencyMap := listCurrencyPairs.MapByCurrency()
-
-	//makeRequest("USD", []string{"EUR", "RUB"})
-	for tick := range time.Tick(10 * time.Second) {
-		fmt.Println("Tick", tick.UTC().Format(time.RFC3339))
-
-		/*testM := map[string]float64{
-			"EUR": 0.009473,
-			"RUB": 0.009524,
-			"PLN": 0.045005,
-		}
-
-		testUPD := &models.CurrencyExchangeInfo{
-			Base:          "USD",
-			ExchangeRates: testM,
-		}
-
-		err := m.repository.Pair.UpdateCurrencyWell(ctx, testUPD)
-		if err != nil {
-			log.Fatalln(err)
-		}*/
-
-		// TODO: "Free plan is limited to 1 request per second."
-		var secondsForSleep int64
-
-		for f, t := range currencyMap {
-
-			// Костыльная задержка для отправки запросов т.к. API банит больше 1 запроса в секунду
-			secondsForSleep++
-
-			m.Add(1)
-			go m.makeRequest(f, t, time.Duration(secondsForSleep))
-			m.Wait()
-		}
-	}
-}
-
-func (m *CheckManager) makeRequest(currencyFrom string, currenciesTo []string, s time.Duration) {
+/*func (m *CheckManager) makeRequest(currencyFrom string, currenciesTo []string, s time.Duration) {
 
 	//"Free plan is limited to 1 request per second."
 	time.Sleep(s * time.Second)
@@ -154,7 +171,7 @@ func (m *CheckManager) makeRequest(currencyFrom string, currenciesTo []string, s
 
 	log.Println(string(body))
 
-	aResp := &models.CurrencyExchangeInfo{}
+	aResp := &exchange_rates.ExchangeRatesInfo{}
 	err = json.Unmarshal(body, aResp)
 	if err != nil {
 		log.Fatalln(err)
@@ -170,4 +187,4 @@ func (m *CheckManager) makeRequest(currencyFrom string, currenciesTo []string, s
 	}
 	// FIXME: Верно ли тут используется WaitGroup?
 	m.Done()
-}
+}*/

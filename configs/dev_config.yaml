@@ -7,3 +7,5 @@ postgres:
   password: "currency_api_db_user_pass"
 
 postgres_conn_link: "postgres://currency_api_db_user:currency_api_db_user_pass@localhost:5438/currency_api_db?sslmode=disable"
+
+abstract_api_key: "f0685cd6c6744cc686d60fa9dc6477c0"

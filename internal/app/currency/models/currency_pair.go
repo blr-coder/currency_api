@@ -70,8 +70,3 @@ type CurrencyPairExchangeInput struct {
 	CurrencyTo   string  `json:"currencyTo"`
 	Value        float64 `json:"value"`
 }
-
-type CurrencyExchangeInfo struct { //need better name:)
-	Base          string             `json:"base"`
-	ExchangeRates map[string]float64 `json:"exchange_rates"`
-}

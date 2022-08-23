@@ -9,6 +9,7 @@ type Config struct {
 	Port             string   `yaml:"port"`
 	Postgres         postgres `yaml:"postgres"`
 	PostgresConnLink string   `yaml:"postgres_conn_link"`
+	AbstractApiKey   string   `yaml:"abstract_api_key"`
 }
 
 type postgres struct {

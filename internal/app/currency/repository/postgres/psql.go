@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"currency_api/pkg/exchange_rates"
 	"fmt"
 	"time"
 
@@ -70,7 +71,7 @@ func (r *Repository) List(ctx context.Context) (models.CurrencyPairs, error) {
 	return pairs, nil
 }
 
-func (r *Repository) UpdateCurrencyWell(ctx context.Context, exchangeInfo *models.CurrencyExchangeInfo) error {
+func (r *Repository) UpdateCurrencyWell(ctx context.Context, exchangeInfo *exchange_rates.ExchangeRatesInfo) error {
 
 	fmt.Println("UpdateCurrencyWell FOR:", exchangeInfo)
 

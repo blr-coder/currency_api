@@ -11,12 +11,14 @@ type Handler struct {
 	service *service.Service
 }
 
-func New(service *service.Service, api *fiber.App) {
-	h := &Handler{
+func New(service *service.Service, api *fiber.App) *Handler {
+	return &Handler{
 		service: service,
 		api:     api,
 	}
+}
 
+func (h *Handler) InitCurrencyRoutes() {
 	h.api.Post("/api/currency", h.Create)
 	h.api.Put("/api/currency", h.Exchange)
 	h.api.Get("/api/currency", h.List)
