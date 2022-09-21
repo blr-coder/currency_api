@@ -34,12 +34,8 @@ type ExchangeRatesInfo struct {
 }
 
 func (c *Client) GetRates(ctx context.Context, from string, currenciesTo []string) (*ExchangeRatesInfo, error) {
-	/*select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
 
-	}*/
+	fmt.Println("GetRates for:", from)
 
 	url := fmt.Sprintf(
 		abstractAPIFormat,
