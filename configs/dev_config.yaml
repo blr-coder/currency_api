@@ -1,10 +1,4 @@
 port: 4444
-postgres:
-  host: 127.0.0.1
-  port: 5438
-  name: "currency_api_db"
-  user: "currency_api_db_user"
-  password: "currency_api_db_user_pass"
 
 postgres_conn_link: "postgres://currency_api_db_user:currency_api_db_user_pass@localhost:5438/currency_api_db?sslmode=disable"
 

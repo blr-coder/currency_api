@@ -8,10 +8,12 @@ import (
 
 	"currency_api/internal/app/currency/models"
 	"currency_api/internal/app/currency/repository/postgres"
+	"currency_api/pkg/log"
 )
 
 type Repository struct {
-	Pair CurrencyPair
+	Pair   CurrencyPair
+	Logger log.Logger
 }
 
 type CurrencyPair interface {
@@ -21,8 +23,9 @@ type CurrencyPair interface {
 	UpdateCurrencyWell(ctx context.Context, exchangeInfo *exchange_rates.ExchangeRatesInfo) error
 }
 
-func New(db *sqlx.DB) *Repository {
+func New(db *sqlx.DB, logger log.Logger) *Repository {
 	return &Repository{
-		Pair: postgres.New(db),
+		Pair:   postgres.New(db, logger),
+		Logger: logger,
 	}
 }

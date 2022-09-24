@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	log "github.com/sirupsen/logrus"
 	"go.uber.org/multierr"
 	"os/signal"
 	"syscall"
@@ -33,7 +34,9 @@ func runApp() (err error) {
 		return err
 	}
 
-	r := repository.New(db)
+	logger := log.StandardLogger()
+
+	r := repository.New(db, logger)
 	s := service.New(r)
 	api := fiber.New()
 
