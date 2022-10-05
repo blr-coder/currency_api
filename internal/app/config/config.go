@@ -2,35 +2,23 @@ package config
 
 import (
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
+	"io/fs"
+	"os"
 )
 
 type Config struct {
-	Port             string   `yaml:"port"`
-	Postgres         postgres `yaml:"postgres"`
-	PostgresConnLink string   `yaml:"postgres_conn_link"`
-	AbstractApiKey   string   `yaml:"abstract_api_key"`
-}
-
-type postgres struct {
-	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	Name     string `yaml:"name"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+	Port             string `yaml:"port"`
+	PostgresConnLink string `yaml:"postgres_conn_link"`
+	AbstractApiKey   string `yaml:"abstract_api_key"`
 }
 
 func NewConfig(configPath string) (*Config, error) {
-	configFile, err := ioutil.ReadFile(configPath)
+	var config Config
+
+	configFile, err := os.OpenFile(configPath, os.O_RDONLY, fs.ModePerm)
 	if err != nil {
 		return nil, err
 	}
 
-	var config Config
-	if err = yaml.Unmarshal(configFile, &config); err != nil {
-		return nil, err
-	}
-
-	return &config, nil
-
+	return &config, yaml.NewDecoder(configFile).Decode(&config)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -35,7 +36,8 @@ type ExchangeRatesInfo struct {
 
 func (c *Client) GetRates(ctx context.Context, from string, currenciesTo []string) (*ExchangeRatesInfo, error) {
 
-	fmt.Println("GetRates for:", from)
+	logrus.Info("GetRates for CURRENCY_FROM:", from)
+	logrus.Info("GetRates for CURRENCIES_TO:", currenciesTo)
 
 	url := fmt.Sprintf(
 		abstractAPIFormat,

@@ -6,18 +6,37 @@ import (
 	"currency_api/internal/app/currency/repository"
 	"currency_api/internal/app/currency/service"
 	"currency_api/internal/app/currency/transport/rest"
-	"currency_api/pkg/exchange_rates"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"go.uber.org/multierr"
 	"os/signal"
+	"runtime"
+	"strings"
 	"syscall"
-	"time"
 )
 
+func init() {
+	logrus.SetReportCaller(true)
+	formatter := &logrus.TextFormatter{
+		TimestampFormat:        "02-01-2006 15:04:05", // the "time" field configuration
+		FullTimestamp:          true,
+		DisableLevelTruncation: true, // log level field configuration
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			return "", fmt.Sprintf(" -> %s:%d", formatFilePath(f.File), f.Line)
+		},
+	}
+	logrus.SetFormatter(formatter)
+}
+
+func formatFilePath(path string) string {
+	arr := strings.Split(path, "/")
+	return arr[len(arr)-1]
+}
+
 func runApp() (err error) {
+	logrus.Info("RUN APP...")
 
 	ctx := context.Background()
 
@@ -34,10 +53,8 @@ func runApp() (err error) {
 		return err
 	}
 
-	logger := log.StandardLogger()
-
-	r := repository.New(db, logger)
-	s := service.New(r)
+	r := repository.New(db)
+	s := service.New(r, appConfig.AbstractApiKey)
 	api := fiber.New()
 
 	h := rest.New(s, api)
@@ -51,39 +68,6 @@ func runApp() (err error) {
 			cancel()
 			return
 		}
-	}()
-
-	// Check rates
-	abstractClient := exchange_rates.New(appConfig.AbstractApiKey)
-
-	go func() {
-
-		for tick := range time.Tick(20 * time.Second) {
-			fmt.Println("Tick", tick.UTC().Format(time.RFC3339))
-
-			listCurrencyPairs, err := r.Pair.List(ctx)
-			if err != nil {
-				// log errors
-				return
-			}
-
-			currencyMap := listCurrencyPairs.MapByCurrency()
-
-			for f, t := range currencyMap {
-				rates, err := abstractClient.GetRates(ctx, f, t)
-				if err != nil {
-					// log errors
-				}
-
-				_ = r.Pair.UpdateCurrencyWell(ctx, rates)
-				if err != nil {
-					// log errors
-				}
-
-				time.Sleep(2 * time.Second)
-			}
-		}
-
 	}()
 
 	<-ctx.Done()
