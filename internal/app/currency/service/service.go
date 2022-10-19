@@ -3,7 +3,8 @@ package service
 import (
 	"context"
 	"currency_api/pkg/exchange_rates"
-	"github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
+	"go.uber.org/multierr"
 	"time"
 
 	"currency_api/internal/app/currency/models"
@@ -22,12 +23,12 @@ func New(repository *repository.Repository, apiKey string) *Service {
 	}
 }
 
-func (s Service) Create(ctx context.Context, pair *models.CurrencyPairCreateInput) (*models.CurrencyPair, error) {
-	return s.repository.Pair.Create(ctx, pair)
+func (s Service) Create(ctx context.Context, pairCreateInput *models.CurrencyPairCreateInput) (*models.CurrencyPair, error) {
+	return s.repository.Pair.Create(ctx, pairCreateInput)
 }
 
-func (s Service) Get(ctx context.Context, f, t string) (*models.CurrencyPair, error) {
-	return s.repository.Pair.Get(ctx, f, t)
+func (s Service) Get(ctx context.Context, from, to string) (*models.CurrencyPair, error) {
+	return s.repository.Pair.Get(ctx, from, to)
 }
 
 func (s Service) List(ctx context.Context) (models.CurrencyPairs, error) {
@@ -36,7 +37,7 @@ func (s Service) List(ctx context.Context) (models.CurrencyPairs, error) {
 
 func (s Service) UpdateCurrencyWell(ctx context.Context, exchangeInfo *exchange_rates.ExchangeRatesInfo) error {
 
-	logrus.Info("UpdateCurrencyWell")
+	var mErr error
 
 	for currency, rate := range exchangeInfo.ExchangeRates {
 
@@ -49,7 +50,8 @@ func (s Service) UpdateCurrencyWell(ctx context.Context, exchangeInfo *exchange_
 		})
 		// TODO: Наверное не стоит обрывать выполнение цикла если какая то одна пара вернула ошибку. Возможно return []error
 		if err != nil {
-			return err
+			//return err
+			mErr = multierr.Append(mErr, err)
 		}
 
 	}
@@ -58,18 +60,17 @@ func (s Service) UpdateCurrencyWell(ctx context.Context, exchangeInfo *exchange_
 }
 
 func (s Service) CheckRates(ctx context.Context) error {
-	logrus.Info("CheckRates")
 	listCurrencyPairs, err := s.List(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "when getting list currency pairs")
 	}
 
 	currencyMap := listCurrencyPairs.MapByCurrency()
 
-	for f, t := range currencyMap {
-		rates, err := s.exchangeRatesClient.GetRates(ctx, f, t)
+	for from, to := range currencyMap {
+		rates, err := s.exchangeRatesClient.GetRates(ctx, from, to)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "with from state - %s, and to state - %s", from, to)
 		}
 
 		err = s.UpdateCurrencyWell(ctx, rates)

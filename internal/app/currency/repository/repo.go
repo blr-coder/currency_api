@@ -8,9 +8,7 @@ import (
 	"currency_api/internal/app/currency/repository/postgres"
 )
 
-type Repository struct {
-	Pair CurrencyPair
-}
+//go:generate minimock -i CurrencyPair -o ./mock/ -s .go -g
 
 type CurrencyPair interface {
 	Create(ctx context.Context, pair *models.CurrencyPairCreateInput) (*models.CurrencyPair, error)
@@ -23,4 +21,8 @@ func New(db *sqlx.DB) *Repository {
 	return &Repository{
 		Pair: postgres.New(db),
 	}
+}
+
+type Repository struct {
+	Pair CurrencyPair
 }

@@ -5,8 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
-	"log"
+	"go.uber.org/multierr"
 	"net/http"
 	"strings"
 )
@@ -54,20 +53,14 @@ func (c *Client) GetRates(ctx context.Context, from string, currenciesTo []strin
 		return nil, err
 	}
 	defer func() {
-		err = response.Body.Close()
+		/*err = response.Body.Close()
 		if err != nil {
 			log.Println(err)
-		}
+		}*/
+		multierr.AppendInto(&err, response.Body.Close())
 	}()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	exchangeInfo := &ExchangeRatesInfo{}
-	err = json.Unmarshal(body, exchangeInfo)
-	if err != nil {
-		return nil, err
-	}
 
-	return exchangeInfo, nil
+	exchangeInfo := &ExchangeRatesInfo{}
+
+	return exchangeInfo, json.NewDecoder(response.Body).Decode(exchangeInfo)
 }

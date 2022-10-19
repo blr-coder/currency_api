@@ -24,7 +24,7 @@ func New(db *sqlx.DB) *Repository {
 
 func (r *Repository) Create(ctx context.Context, input *models.CurrencyPairCreateInput) (*models.CurrencyPair, error) {
 	query := `
-		INSERT INTO currency_pair  (currency_from, currency_to, well) 
+		INSERT INTO currency_pair (currency_from, currency_to, well) 
 		VALUES ($1, $2, $3)
 		RETURNING currency_from, currency_to, well, updated_at
 	`
