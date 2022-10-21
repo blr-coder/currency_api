@@ -7,10 +7,12 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gofiber/fiber/v2 v2.36.0
 	github.com/gojuno/minimock/v3 v3.0.10
+	github.com/jaswdr/faker v1.15.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
+	github.com/stretchr/testify v1.7.0
 	go.uber.org/multierr v1.8.0
 	golang.org/x/text v0.3.7
 	gopkg.in/yaml.v3 v3.0.1

@@ -5,122 +5,141 @@ import (
 	"currency_api/internal/app/currency/models"
 	"currency_api/internal/app/currency/repository"
 	"currency_api/internal/app/currency/repository/mock"
-	"currency_api/pkg/exchange_rates"
 	"github.com/gojuno/minimock/v3"
+	"github.com/jaswdr/faker"
 	"github.com/pkg/errors"
-	"reflect"
-	"syreclabs.com/go/faker"
+	"github.com/stretchr/testify/suite"
+	"math/rand"
 	"testing"
 	"time"
 )
 
-// TODO: Куда то надо вынести NewCurrencyPairCreateInput и NewCurrencyPair т.к. юзаем их в разных тестах
-
-func NewCurrencyPairCreateInput(t *testing.T) *models.CurrencyPairCreateInput {
-	t.Helper()
-	return &models.CurrencyPairCreateInput{
-		CurrencyFrom: "USD",
-		CurrencyTo:   "RUB",
-	}
-}
-
 func NewCurrencyPair(t *testing.T) *models.CurrencyPair {
 	t.Helper()
-	updatedAt := faker.Time().Backward(20 * time.Hour).UTC()
+	f := faker.New()
+	updatedAt := f.Time().Time(time.Now()).UTC()
 	return &models.CurrencyPair{
-		CurrencyFrom: "USD",
-		CurrencyTo:   "RUB",
-		Well:         0,
+		CurrencyFrom: f.Currency().Code(),
+		CurrencyTo:   f.Currency().Code(),
+		Well:         float64(f.RandomDigit()),
 		UpdatedAt:    &updatedAt,
 	}
 }
 
-func TestService_Create(t *testing.T) {
-	mockController := minimock.NewController(t)
-	defer mockController.Finish()
+func NewCurrencyPairList(t *testing.T) models.CurrencyPairs {
+	t.Helper()
+	f := faker.New()
 
-	ctx := context.Background()
-	currencyPairMockRepo := mock.NewCurrencyPairMock(mockController)
-	currencyPairCreateInput := NewCurrencyPairCreateInput(t)
-	currencyPair := NewCurrencyPair(t)
+	var currencyPairs models.CurrencyPairs
 
-	type fields struct {
-		repository          *repository.Repository
-		exchangeRatesClient *exchange_rates.Client
-	}
-	type args struct {
-		ctx             context.Context
-		pairCreateInput *models.CurrencyPairCreateInput
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *models.CurrencyPair
-		wantErr error
-	}{
-		{
-			name: "OK",
-			fields: func() fields {
-
-				currencyPairMockRepo.
-					CreateMock.
-					Expect(ctx, currencyPairCreateInput).
-					Return(currencyPair, nil)
-
-				return fields{
-					repository: &repository.Repository{
-						Pair: currencyPairMockRepo,
-					},
-					exchangeRatesClient: nil,
-				}
-			}(),
-			args: args{
-				ctx:             ctx,
-				pairCreateInput: currencyPairCreateInput,
-			},
-			want:    currencyPair,
-			wantErr: nil,
-		},
-		// TODO: Не понимаю почему если запускать оба теста want: из первого получает значение из второго.
-		/*{
-			name: "ERR",
-			fields: func() fields {
-
-				currencyPairMockRepo.
-					CreateMock.
-					//Expect(ctx, currencyPairCreateInput).
-					Return(nil, nil)
-
-				return fields{
-					repository: &repository.Repository{
-						Pair: currencyPairMockRepo,
-					},
-					exchangeRatesClient: nil,
-				}
-			}(),
-			args: args{
-				ctx:             ctx,
-				pairCreateInput: currencyPairCreateInput,
-			},
-			want:    nil,
-			wantErr: nil,
-		},*/
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := Service{
-				repository:          tt.fields.repository,
-				exchangeRatesClient: tt.fields.exchangeRatesClient,
-			}
-			got, err := s.Create(tt.args.ctx, tt.args.pairCreateInput)
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Create() got = %v, want %v", got, tt.want)
-			}
+	for i := 1; i <= rand.Intn(20); i++ {
+		updatedAt := f.Time().Time(time.Now()).UTC()
+		currencyPairs = append(currencyPairs, &models.CurrencyPair{
+			CurrencyFrom: f.Currency().Code(),
+			CurrencyTo:   f.Currency().Code(),
+			Well:         float64(f.RandomDigit()),
+			UpdatedAt:    &updatedAt,
 		})
 	}
+
+	return currencyPairs
+}
+
+// CurrencyPairTestsSuite - набор тестов валютной пары :)
+type CurrencyPairTestsSuite struct {
+	suite.Suite
+
+	currencyPairMock *mock.CurrencyPairMock
+	service          *Service
+}
+
+func (ts *CurrencyPairTestsSuite) SetupTest() {
+	mockController := minimock.NewController(ts.T())
+	ts.currencyPairMock = mock.NewCurrencyPairMock(mockController)
+	ts.service = New(&repository.Repository{
+		Pair: ts.currencyPairMock,
+	}, "")
+}
+
+func (ts *CurrencyPairTestsSuite) clear() {
+	ts.currencyPairMock.MinimockCreateDone()
+	ts.currencyPairMock.MinimockFinish()
+}
+
+func TestCurrencyPairs(t *testing.T) {
+	suite.Run(t, new(CurrencyPairTestsSuite))
+}
+
+func (ts *CurrencyPairTestsSuite) TestCreateSuccess() {
+	defer ts.clear()
+
+	ctx := context.Background()
+	randomCurrencyPair := NewCurrencyPair(ts.T())
+	want := randomCurrencyPair
+
+	ts.currencyPairMock.CreateMock.Return(want, nil)
+
+	actual, err := ts.service.Create(ctx, &models.CurrencyPairCreateInput{
+		CurrencyFrom: randomCurrencyPair.CurrencyFrom,
+		CurrencyTo:   randomCurrencyPair.CurrencyTo,
+	})
+	ts.Require().NoError(err)
+	ts.Require().NotNil(actual)
+	ts.Require().Equal(*want, *actual)
+}
+
+func (ts *CurrencyPairTestsSuite) TestCreateError() {
+	defer ts.clear()
+
+	ctx := context.Background()
+
+	ts.currencyPairMock.CreateMock.Return(nil, errors.New("some err"))
+
+	actual, err := ts.service.Create(ctx, &models.CurrencyPairCreateInput{})
+	ts.Require().Error(err)
+	ts.Require().Nil(actual)
+}
+
+func (ts *CurrencyPairTestsSuite) TestGetSuccess() {
+	defer ts.clear()
+
+	ctx := context.Background()
+	randomCurrencyPair := NewCurrencyPair(ts.T())
+
+	want := randomCurrencyPair
+
+	ts.currencyPairMock.GetMock.Return(want, nil)
+
+	actual, err := ts.service.Get(ctx, randomCurrencyPair.CurrencyFrom, randomCurrencyPair.CurrencyTo)
+	ts.Require().NoError(err)
+	ts.Require().NotNil(actual)
+	ts.Require().Equal(*want, *actual)
+}
+
+func (ts *CurrencyPairTestsSuite) TestGetError() {
+	defer ts.clear()
+
+	ctx := context.Background()
+
+	ts.currencyPairMock.GetMock.Return(nil, errors.New("some err"))
+
+	actual, err := ts.service.Get(ctx, "", "")
+	ts.Require().Error(err)
+	ts.Require().Nil(actual)
+}
+
+func (ts *CurrencyPairTestsSuite) TestListSuccess() {
+	defer ts.clear()
+
+	ctx := context.Background()
+	randomCurrencyPairList := NewCurrencyPairList(ts.T())
+
+	want := randomCurrencyPairList
+
+	ts.currencyPairMock.ListMock.Return(want, nil)
+
+	actual, err := ts.service.List(ctx)
+	ts.Require().NoError(err)
+	ts.Require().NotNil(actual)
+	ts.Require().Equal(want, actual)
 }
