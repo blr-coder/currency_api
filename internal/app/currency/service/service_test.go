@@ -116,7 +116,7 @@ func (ts *CurrencyPairTestsSuite) TestGetSuccess() {
 	ts.Require().Equal(*want, *actual)
 }
 
-func (ts *CurrencyPairTestsSuite) TestGetError() {
+/*func (ts *CurrencyPairTestsSuite) TestGetError() {
 	defer ts.clear()
 
 	ctx := context.Background()
@@ -126,7 +126,7 @@ func (ts *CurrencyPairTestsSuite) TestGetError() {
 	actual, err := ts.service.Get(ctx, "", "")
 	ts.Require().Error(err)
 	ts.Require().Nil(actual)
-}
+}*/
 
 func (ts *CurrencyPairTestsSuite) TestListSuccess() {
 	defer ts.clear()
@@ -142,4 +142,41 @@ func (ts *CurrencyPairTestsSuite) TestListSuccess() {
 	ts.Require().NoError(err)
 	ts.Require().NotNil(actual)
 	ts.Require().Equal(want, actual)
+}
+
+func (ts *CurrencyPairTestsSuite) TestGetError() {
+	defer ts.clear()
+
+	ctx := context.Background()
+	wanrErr := errors.New("that is bad")
+
+	ts.currencyPairMock.GetMock.When(ctx, "bad", "bad").Then(nil, wanrErr)
+	/*ts.currencyPairMock.GetMock.When(ctx, "g", "g").Then(nil, errors.New("that is bad"))
+	ts.currencyPairMock.GetMock.When(ctx, "z", "hb").Then(nil, errors.New("that is bad"))
+	ts.currencyPairMock.GetMock.When(ctx, "fdss", "reg").Then(nil, errors.New("that is bad"))
+	ts.currencyPairMock.GetMock.When(ctx, "rebw", "bgerw").Then(nil, errors.New("that is bad"))*/
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr error
+		want    *models.CurrencyPair
+	}{
+		{
+			name: "simple",
+			args: []string{
+				"bad", "bad",
+			},
+			wantErr: wanrErr,
+			want:    nil,
+		},
+	}
+
+	for _, tt := range tests {
+		ts.Run(tt.name, func() {
+			actual, err := ts.service.Get(ctx, tt.args[0], tt.args[1])
+			ts.Require().Equal(tt.wantErr, err)
+			ts.Require().Equal(tt.want, actual)
+		})
+	}
 }
